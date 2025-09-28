@@ -1,0 +1,42 @@
+<!doctype html>
+<html class="h-full" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>SnapNotes • Home</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="h-full bg-gray-50 text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100">
+<header id="app-header" class="sticky top-0 z-40 border-b border-gray-200 bg-white/80 backdrop-blur dark:border-gray-800 dark:bg-gray-900/80"></header>
+
+<main class="mx-auto max-w-7xl px-4 py-10">
+    <section class="grid gap-6 lg:grid-cols-2">
+        <div class="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <h1 class="mb-3 text-2xl font-bold">Welcome to SnapNotes</h1>
+            <p class="mb-6 text-gray-600 dark:text-gray-300">
+                Authenticate with Cognito, upload images to S3 via pre-signed URLs,
+                and store searchable notes in DynamoDB.
+            </p>
+            <div class="flex flex-wrap gap-3">
+                <a href="/public/auth.html" class="rounded-xl bg-indigo-600 px-4 py-2 text-white shadow hover:bg-indigo-500">Get started</a>
+                <a href="/public/upload.html" class="rounded-xl bg-white px-4 py-2 ring-1 ring-gray-200 hover:bg-gray-50 dark:bg-gray-900 dark:ring-gray-700">Upload</a>
+                <a href="/public/notes.html" class="rounded-xl bg-white px-4 py-2 ring-1 ring-gray-200 hover:bg-gray-50 dark:bg-gray-900 dark:ring-gray-700">View notes</a>
+            </div>
+        </div>
+
+        <div class="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <h2 class="mb-4 text-lg font-semibold">How it works</h2>
+            <ol class="list-decimal space-y-2 pl-5 text-sm text-gray-600 dark:text-gray-300">
+                <li>Sign up & log in to get a Cognito <code>access token</code>.</li>
+                <li>Request a pre-signed S3 URL and upload directly from the browser.</li>
+                <li>Create a note with the S3 key, caption, and tags.</li>
+                <li>Search & download your notes anytime.</li>
+            </ol>
+        </div>
+    </section>
+</main>
+
+<script src="/public/shared.js"></script>
+<script> App.renderHeader('home'); </script>
+</body>
+</html>

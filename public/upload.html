@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>SnapNotes • Upload</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="h-full bg-gray-50 text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100">
+<header id="app-header" class="sticky top-0 z-40 border-b border-gray-200 bg-white/80 backdrop-blur dark:border-gray-800 dark:bg-gray-900/80"></header>
+
+<main class="mx-auto max-w-5xl px-4 py-8">
+  <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+    <h2 class="mb-4 text-base font-semibold">Upload & Create Note</h2>
+
+    <div class="grid gap-5 md:grid-cols-2">
+      <div>
+        <label class="text-xs font-medium text-gray-600 dark:text-gray-300">Select image</label>
+        <!-- 🔧 removed the accidental `$token ...` text -->
+        <input id="fileInput"
+               type="file" accept="image/*"
+               class="mb-3 w-full rounded-xl border px-3 py-2 dark:bg-gray-800" />
+        <div id="previewWrap" class="hidden">
+          <img id="previewImg" class="max-h-60 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700"/>
+        </div>
+        <div class="mt-4 flex gap-2">
+          <button id="presignBtn" class="rounded-xl bg-white px-4 py-2 ring-1 ring-gray-200 hover:bg-gray-50 dark:bg-gray-900 dark:ring-gray-700">1) Presign</button>
+          <button id="uploadBtn"  class="rounded-xl bg-indigo-600 px-4 py-2 text-white disabled:opacity-50" disabled>2) Upload</button>
+        </div>
+        <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+          <div id="progressBar" class="h-full w-0 bg-indigo-600 transition-[width]"></div>
+        </div>
+        <p id="resultKey" class="mt-2 text-xs text-gray-500"></p>
+      </div>
+
+      <div>
+        <label class="text-xs font-medium text-gray-600 dark:text-gray-300">Caption</label>
+        <input id="captionInput" class="mb-3 w-full rounded-xl border px-3 py-2 dark:bg-gray-800"/>
+        <label class="text-xs font-medium text-gray-600 dark:text-gray-300">Tags (comma separated)</label>
+        <input id="tagsInput" class="mb-4 w-full rounded-xl border px-3 py-2 dark:bg-gray-800" placeholder="CAB432, demo"/>
+        <button id="createBtn" class="w-full rounded-xl bg-indigo-600 px-4 py-2 text-white disabled:opacity-50" disabled>3) Create note</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="/public/shared.js"></script>
+<script>
+  App.renderHeader('upload');
+  App.ensureAuth();
+
+  const $ = s => document.querySelector(s);
+  const state = {
+    key: null,          // ← S3 key returned by /uploads/presign
+    upload: null,       // ← { url, headers, method }
+    contentType: null,  // ← what we tell S3
+  };
+
+  // File preview
+  const fileInput = $('#fileInput');
+  fileInput.addEventListener('change', () => {
+    const f = fileInput.files?.[0];
+    if (!f) return;
+    $('#previewWrap').classList.remove('hidden');
+    $('#previewImg').src = URL.createObjectURL(f);
+    // reset state
+    state.key = null;
+    state.upload = null;
+    $('#resultKey').textContent = '';
+    $('#uploadBtn').disabled = true;
+    $('#createBtn').disabled = true;
+    $('#progressBar').style.width = '0%';
+  });
+
+  // Step 1: Presign
+  $('#presignBtn').onclick = async () => {
+    const f = fileInput.files?.[0];
+    if (!f) return App.toast('Choose a file');
+
+    try {
+      const contentType =
+              f.type ||
+              (/\.(jpe?g)$/i.test(f.name) ? 'image/jpeg'
+                      : /\.png$/i.test(f.name) ? 'image/png'
+                              : 'application/octet-stream');
+
+      const r = await App.api('/uploads/presign', {
+        method: 'POST',
+        body: JSON.stringify({ filename: f.name, contentType })
+      });
+
+      // ✅ your API returns: { ok, key, upload: { url, headers, method, expiresIn } }
+      if (r.ok === false) throw new Error(r.error || 'Presign failed');
+
+      state.key = r.key;
+      state.upload = r.upload;  // { url, headers, method }
+      state.contentType = contentType;
+
+      $('#resultKey').textContent = 'Result key: ' + state.key;
+      $('#uploadBtn').disabled = false;
+      App.toast('Presigned URL ready', true);
+    } catch (e) {
+      console.error('Presign error:', e);
+      App.toast('Presign error: ' + e.message);
+    }
+  };
+
+  // Step 2: Upload
+  $('#uploadBtn').onclick = async () => {
+    const f = fileInput.files?.[0];
+    if (!f) return App.toast('Choose a file');
+    if (!state.upload?.url) return App.toast('No presigned URL');
+    const pb = $('#progressBar'); pb.style.width = '0%';
+
+    try {
+      await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', state.upload.url);
+
+        // ✅ MUST send the same headers used to presign
+        const hdrs = state.upload.headers || {};
+        Object.entries(hdrs).forEach(([k, v]) => {
+          if (v != null) xhr.setRequestHeader(k, String(v));
+        });
+
+        xhr.upload.onprogress = ev => {
+          if (ev.lengthComputable) pb.style.width = ((ev.loaded / ev.total) * 100) + '%';
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) resolve();
+          else reject(new Error(`S3 PUT ${xhr.status}: ${xhr.responseText}`));
+        };
+        xhr.onerror = () => reject(new Error('Network error'));
+        xhr.send(f);
+      });
+
+      $('#createBtn').disabled = false;
+      App.toast('Upload complete', true);
+    } catch (e) {
+      console.error('Upload error:', e);
+      App.toast('Upload error: ' + e.message);
+    }
+  };
+
+  // Step 3: Create note
+  $('#createBtn').onclick = async () => {
+    if (!state.key) return App.toast('Upload first');
+
+    const caption = $('#captionInput').value.trim();
+    const tags = $('#tagsInput').value.split(',').map(s => s.trim()).filter(Boolean);
+
+    try {
+      await App.api('/notes', {
+        method: 'POST',
+        body: JSON.stringify({ s3Key: state.key, caption, tags })
+      });
+      App.toast('Note created', true);
+      location.href = '/public/notes.html';
+    } catch (e) {
+      console.error('Create error:', e);
+      App.toast('Create error: ' + e.message);
+    }
+  };
+</script>
+</body>
+</html>
