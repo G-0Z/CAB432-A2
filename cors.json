@@ -1,0 +1,11 @@
+{
+  "CORSRules": [
+    {
+      "AllowedOrigins": ["http://localhost:3000", "https://<your-sub>.cab432.com"],
+      "AllowedMethods": ["PUT","GET","HEAD"],
+      "AllowedHeaders": ["*"],
+      "ExposeHeaders": ["ETag","x-amz-server-side-encryption"],
+      "MaxAgeSeconds": 300
+    }
+  ]
+}

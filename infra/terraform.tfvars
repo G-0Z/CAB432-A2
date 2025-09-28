@@ -1,0 +1,8 @@
+aws_region          = "ap-southeast-2"
+aws_profile         = "CAB432-STUDENT"
+project_name        = "snapnotes"
+bucket_name         = "cab432-maxgosling"
+dynamodb_table_name = "snapnotes-table"
+domain_name         = ""
+subdomain           = ""
+ec2_instance_id     = ""

@@ -33,15 +33,21 @@ app.use(cors({
     credentials: false,
 }));
 app.options("*", cors());
+
 /* ---------- Core middleware ---------- */
-app.set("trust proxy", true); // helpful behind ALB/NGINX if you add later
+app.set("trust proxy", true);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: false }));
 app.use(morgan("dev"));
 app.use("/public", express.static("public"));
 
 /* ---------- Health ---------- */
-app.get("/health", (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
+app.get("/health", (_req, res) => res.json({
+    ok: true,
+    ts: new Date().toISOString(),
+    secretsLoaded: Boolean(process.env.JWT_SECRET && process.env.COGNITO_CLIENT_ID),
+    secretsSource: process.env.SNAPNOTES_SECRETS_MODE || "(bootstrap)",
+}));
 
 /* ---------- Routers ---------- */
 app.use("/auth", authRouter);
@@ -50,10 +56,7 @@ app.use("/uploads", uploadRouter);
 
 /* ---------- 404 + errors ---------- */
 app.use(notFoundMiddleware);
-
-// Add a small wrapper so presign errors are obvious in clients.
 app.use((err, req, res, next) => {
-    // Surface common presign problems more clearly
     const msg = String(err?.message || err || "Internal error");
     if (msg.includes("CREDENTIALS_NEAR_EXPIRY")) {
         return res.status(503).json({ error: "CREDENTIALS_NEAR_EXPIRY" });
@@ -61,7 +64,6 @@ app.use((err, req, res, next) => {
     if (msg.includes("CORS")) {
         return res.status(403).json({ error: msg });
     }
-    // Fall back to your existing error middleware for everything else
     return errorMiddleware(err, req, res, next);
 });
 
@@ -71,7 +73,7 @@ const BASE_PORT = Number(process.env.PORT || 3000);
 function listenWithFallback(port, attemptsLeft = 10) {
     const server = http.createServer(app);
     server.on("error", (e) => {
-        if (e && (/** @type any */(e)).code === "EADDRINUSE" && attemptsLeft > 0) {
+        if (e && /** @type any */(e).code === "EADDRINUSE" && attemptsLeft > 0) {
             const nextPort = port + 1;
             console.warn(`Port ${port} in use, trying ${nextPort}...`);
             listenWithFallback(nextPort, attemptsLeft - 1);

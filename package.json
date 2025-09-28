@@ -1,0 +1,37 @@
+{
+  "name": "snapnotes",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/app.js",
+    "start": "node src/app.js",
+    "test": "node --test",
+    "start:sm": "cross-env SNAPNOTES_SECRETS_MODE=sm-read SNAPNOTES_SECRET_NAME=n11543027/jwt node src/start.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.673.0",
+    "@aws-sdk/client-dynamodb": "^3.896.0",
+    "@aws-sdk/client-s3": "^3.896.0",
+    "@aws-sdk/client-secrets-manager": "^3.896.0",
+    "@aws-sdk/client-ssm": "^3.896.0",
+    "@aws-sdk/client-sts": "^3.896.0",
+    "@aws-sdk/credential-provider-node": "^3.896.0",
+    "@aws-sdk/credential-providers": "^3.896.0",
+    "@aws-sdk/lib-dynamodb": "^3.896.0",
+    "@aws-sdk/s3-request-presigner": "^3.896.0",
+    "aws-jwt-verify": "^4.0.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "memcached": "^2.2.2",
+    "morgan": "^1.10.1",
+    "multer": "^2.0.2",
+    "node-cache": "^5.1.2",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.10.0"
+  }
+}
